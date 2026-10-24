@@ -7,7 +7,7 @@ extern "c" fn isatty(fd: c_int) c_int;
 const txt = struct {
     pub const press_enter: [:0]const u8 = "Drück <Enter>   -   Hoch/Runter: Anzahl (1-3)";
     pub const sum = "Summe: ";
-    pub const star = " + Stern";
+    pub const monocle = " + Monokel";
     pub const bus = " + Bus";
 };
 
@@ -35,8 +35,10 @@ const face_col = c.Color{ .r = 252, .g = 252, .b = 250, .a = 255 };
 const edge_col = c.Color{ .r = 226, .g = 230, .b = 236, .a = 255 };
 const digit_col = c.Color{ .r = 34, .g = 49, .b = 63, .a = 255 };
 const speed_col = c.Color{ .r = 230, .g = 57, .b = 70, .a = 255 };
-const star_col = c.Color{ .r = 255, .g = 196, .b = 30, .a = 255 };
-const star_edge = c.Color{ .r = 214, .g = 140, .b = 0, .a = 255 };
+const mono_gold = c.Color{ .r = 255, .g = 196, .b = 30, .a = 255 };
+const mono_edge = c.Color{ .r = 196, .g = 128, .b = 0, .a = 255 };
+const mono_glass = c.Color{ .r = 214, .g = 236, .b = 248, .a = 255 };
+const mono_shine = c.Color{ .r = 255, .g = 255, .b = 255, .a = 255 };
 const bus_body = c.Color{ .r = 255, .g = 183, .b = 3, .a = 255 };
 const bus_stripe = c.Color{ .r = 251, .g = 113, .b = 0, .a = 255 };
 const bus_glass = c.Color{ .r = 142, .g = 202, .b = 230, .a = 255 };
@@ -268,14 +270,31 @@ fn draw_digit(p: Pen, d: usize) void {
     }
 }
 
-fn draw_star(p: Pen, outer: f32, inner: f32, col: c.Color) void {
-    var pts: [10][2]f32 = undefined;
-    for (0..10) |i| {
-        const a = -std.math.pi / 2.0 + @as(f32, @floatFromInt(i)) * std.math.pi / 5.0;
-        const r = if (i % 2 == 0) outer else inner;
-        pts[i] = .{ 0.5 + r * @cos(a), 0.53 + r * @sin(a) };
+fn draw_monocle(p: Pen) void {
+    const cu: f32 = 0.44;
+    const cv: f32 = 0.42;
+    var link: usize = 0;
+    while (link <= 16) : (link += 1) {
+        const t = @as(f32, @floatFromInt(link)) / 16.0;
+        const ax = cu + 0.2 * @cos(@as(f32, 0.75));
+        const ay = cv + 0.2 * @sin(@as(f32, 0.75));
+        const bx: f32 = 0.86;
+        const by: f32 = 0.6;
+        const ex: f32 = 0.74;
+        const ey: f32 = 0.9;
+        const q = 1 - t;
+        const x = q * q * ax + 2 * q * t * bx + t * t * ex;
+        const y = q * q * ay + 2 * q * t * by + t * t * ey;
+        p.circle(x, y, 0.022, mono_edge);
+        p.circle(x, y, 0.012, mono_gold);
     }
-    p.poly(&pts, col);
+    p.circle(cu, cv, 0.235, mono_edge);
+    p.circle(cu, cv, 0.218, mono_gold);
+    p.circle(cu, cv, 0.178, mono_edge);
+    p.circle(cu, cv, 0.165, mono_glass);
+    const shine = Pen{ .img = p.img, .s = p.s, .oy = p.oy, .r = @intFromFloat(p.s * 0.016), .col = mono_shine };
+    shine.arc(cu, cv, 0.115, -2.75, -1.75);
+    shine.dot(cu + 0.115 * @cos(@as(f32, -1.45)), cv + 0.115 * @sin(@as(f32, -1.45)));
 }
 
 fn draw_bus(p: Pen) void {
@@ -309,8 +328,7 @@ fn make_strip(special: bool) c.Texture2D {
         if (!special or k < 3) {
             draw_digit(pen, k + 1);
         } else if (k < 5) {
-            draw_star(pen, 0.36, 0.15, star_edge);
-            draw_star(pen, 0.30, 0.125, star_col);
+            draw_monocle(pen);
         } else {
             draw_bus(pen);
         }
@@ -541,7 +559,7 @@ pub fn main() void {
             var last: f32 = 0;
             for (0..cubes) |i| {
                 if (i == speed_die and values[i] > 3) {
-                    extra = if (values[i] == 6) txt.bus else txt.star;
+                    extra = if (values[i] == 6) txt.bus else txt.monocle;
                 } else {
                     sum += values[i];
                 }
