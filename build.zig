@@ -39,10 +39,8 @@ pub fn build(b: *std.Build) void {
     raylib_mod.addCSourceFiles(.{
         .root = b.path("raylib/src"),
         .files = &.{"rglfw.c"},
-        .flags = if (os == .macos)
-            &(common_flags ++ [_][]const u8{ "-DGL_SILENCE_DEPRECATION", "-x", "objective-c" })
-        else
-            flags,
+        .flags = flags,
+        .language = if (os == .macos) .objective_c else null,
     });
 
     const raylib = b.addLibrary(.{
@@ -77,7 +75,7 @@ pub fn build(b: *std.Build) void {
             exe.root_module.linkSystemLibrary("X11", .{});
         },
         .macos => {
-            inline for (.{ "Foundation", "CoreServices", "CoreGraphics", "AppKit", "IOKit", "OpenGL" }) |fw| {
+            inline for (.{ "Foundation", "CoreServices", "CoreGraphics", "AppKit", "IOKit", "OpenGL", "QuartzCore" }) |fw| {
                 exe.root_module.linkFramework(fw, .{});
             }
         },
@@ -90,7 +88,7 @@ pub fn build(b: *std.Build) void {
     }
 
     exe.use_llvm = true;
-    exe.use_lld = true;
+    exe.use_lld = os != .macos;
 
     const i = b.addInstallArtifact(exe, .{ .dest_dir = .{ .override = .{ .custom = "../" } } });
     b.getInstallStep().dependOn(&i.step);
